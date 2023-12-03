@@ -9,13 +9,13 @@ type Symbol = (char, usize, usize);
 
 fn main() -> io::Result<()> {
     let file_path = "input.txt";
-    let contents = fs::read_to_string(file_path)?;
-    compute_gear_ratios(&contents);
+    let scheme = fs::read_to_string(file_path)?;
+    compute_gear_ratios(&scheme);
     Ok(())
 }
 
-fn compute_gear_ratios(contents: &str) {
-    let (symbols, numbers) = process_contents(&contents);
+fn compute_gear_ratios(scheme: &str) {
+    let (symbols, numbers) = process_scheme(&scheme);
     // println!("Symbols: {:?}", symbols);
     // println!("Numbers: {:?}", numbers);
 
@@ -44,11 +44,11 @@ fn compute_gear_ratios(contents: &str) {
     println!("Sum of gear ratios: {}", sum_of_gear_ratios)
 }
 
-fn process_contents(contents: &str) -> (Vec<Symbol>, Vec<Number>) {
+fn process_scheme(scheme: &str) -> (Vec<Symbol>, Vec<Number>) {
     let mut symbols: Vec<Symbol> = Vec::new();
     let mut numbers: Vec<Number> = Vec::new();
 
-    for (i, line) in contents.lines().enumerate() {
+    for (i, line) in scheme.lines().enumerate() {
         let mut j = 0;
         while j < line.len() {
             let c = line.chars().nth(j).unwrap();
