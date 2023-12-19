@@ -12,7 +12,8 @@ fn main() {
         println!("{}\n", pattern);
         let pattern_rows: Vec<String> = pattern.lines().map(|s| s.to_string()).collect();
         if let Some(n) = find_reflection(pattern_rows) {
-            horizontal_lines.push(n)
+            horizontal_lines.push(n);
+            continue;
         }
 
         // no horizontal lines found, look for vertical
@@ -42,25 +43,30 @@ fn find_reflection(patterns: Vec<String>) -> Option<usize> {
     for i in 0..(patterns.len() - 1) {
         let bottom_range = (i + 1)..(2 * (i + 1)).min(patterns.len());
         let top_range = (1 + i).saturating_sub(bottom_range.len())..=i;
-        if is_reflection(&patterns[top_range], &patterns[bottom_range]) {
+        if is_reflection(&patterns[top_range], &patterns[bottom_range]) == 1 {
+            // tolerate 1 smudge of difference
             return Some(i + 1);
         }
     }
     None
 }
 
-fn is_reflection(pattern1: &[String], pattern2: &[String]) -> bool {
+// fn is_reflection(pattern1: &[String], pattern2: &[String]) -> bool {
+fn is_reflection(pattern1: &[String], pattern2: &[String]) -> usize {
+    // instead of returning a bool, we return the number of differences
     if pattern1.len() != pattern2.len() {
-        return false;
+        return pattern1.len() * pattern1.iter().next().unwrap().len();
     }
-
+    let mut number_of_differences = 0;
     for i in 0..pattern1.len() {
         let reflection = pattern1.len() - 1 - i;
-        if pattern1[i] != pattern2[reflection] {
-            return false;
-        }
+        number_of_differences += pattern1[i]
+            .chars()
+            .zip(pattern2[reflection].chars())
+            .filter(|x| x.0 != x.1)
+            .count();
     }
-    true
+    number_of_differences
 }
 
 fn parse_patterns(input: &str) -> Vec<&str> {
