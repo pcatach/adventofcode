@@ -4,13 +4,11 @@ It can be horizontal, vertical, diagonal backwards, and overlapping.
 use std::io;
 use std::cmp::min;
 
-use utils::read_from_args;
+use utils::{read_from_args, read_array_from_string};
 
 fn main() -> io::Result<()> {
     let word_search = read_from_args()?;
-    let word_search_array = word_search.lines().map(
-        |line| line.chars().collect::<Vec<char>>()
-    ).collect::<Vec<Vec<char>>>();
+    let word_search_array = read_array_from_string(word_search);
 
     let horizontal_matches = get_horizontal_matches(&word_search_array);
     dbg!(horizontal_matches);
