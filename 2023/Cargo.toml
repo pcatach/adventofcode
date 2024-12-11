@@ -1,0 +1,4 @@
+[workspace]
+resolver = "1"
+members = ["day*"]
+exclude = ["day01", "day02"] # python
