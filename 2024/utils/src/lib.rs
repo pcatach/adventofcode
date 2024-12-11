@@ -13,3 +13,13 @@ pub fn read_array_from_string(text: String) -> Vec<Vec<char>> {
         |line| line.chars().collect::<Vec<char>>()
     ).collect()
 }
+
+pub fn read_array_of_numbers_from_string(text: String) -> Vec<Vec<u32>> {
+    text.lines().map(
+        |line| line.chars()
+        .map(
+            |c| if c == '.' {100} else {c.to_digit(10).unwrap()}
+        )
+        .collect::<Vec<u32>>()
+    ).collect()
+}
