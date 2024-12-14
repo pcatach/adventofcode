@@ -25,17 +25,6 @@ For each plot:
 
 Area will be given by number of plots in the cluster, perimeter can be computed
 on the go by adding 1 for each "wall" that you hit 
-
-Part 2: price is given by area * number of sides instead of perimeter.
-Number of sides is the same as the number of corners
-
-A A A A
--------
-B B |C| D
-B B |C  C
-------
-E E E | C
-
 */
 use std::io;
 
@@ -45,7 +34,6 @@ use utils::{read_from_args, read_array_from_string};
 struct Cluster {
     cluster_type: char,
     perimeter: usize,
-    sides: usize,
     plots: Vec<(usize, usize)>
 }
 
@@ -78,12 +66,9 @@ fn find_all_clusters(
             let mut new_cluster = Cluster {
                 cluster_type: map[i][j],
                 perimeter: 0,
-                sides: 0,
                 plots: Vec::new()
             };
-            dbg!(map[i][j]);
             find_cluster(&map, height, width, &mut new_cluster, (i, j));
-            dbg!(new_cluster.sides);
             clusters.push(new_cluster);
         }
     }
@@ -99,31 +84,19 @@ fn find_cluster(
 ) {
     cluster.plots.push(plot);
 
-    let mut walls: Vec<usize> = Vec::new();
-    for (i, neighbor) in get_neighbors(plot, map).iter().enumerate() {
+    for &neighbor in get_neighbors(plot, map).iter() {
         match neighbor {
             None => {
                 cluster.perimeter += 1;
-                walls.push(i);
             },
             Some(n) => {
                 if cluster.cluster_type != map[n.0][n.1] {
                     cluster.perimeter += 1;
-                    walls.push(i);
                 } else if !cluster.plots.contains(&n) {
-                    find_cluster(map, height, width, cluster, *n);
+                    find_cluster(map, height, width, cluster, n);
                 }
             }
         }        
-    }
-    if walls.len() == 2 {
-        if (walls[1] - walls[0]) % 2 == 1 {
-            cluster.sides += 2;
-        }
-    } else if walls.len() == 3 {
-        cluster.sides += 3;
-    } else if walls.len() == 4 {
-        cluster.sides += 4
     }
 }
 
