@@ -25,17 +25,31 @@ For each plot:
 
 Area will be given by number of plots in the cluster, perimeter can be computed
 on the go by adding 1 for each "wall" that you hit 
+
+Part 2: price is given by the product of a region's area and it's number of sides.
 */
 use std::io;
 
 use utils::{read_from_args, read_array_from_string};
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 struct Cluster {
     cluster_type: char,
     perimeter: usize,
+    corners: usize,
     plots: Vec<(usize, usize)>
 }
+
+const N: (isize, isize)  = (-1, 0);
+const NE: (isize, isize) = (-1, 1);
+const E: (isize, isize) = (0, 1);
+const SE: (isize, isize) = (1, 1);
+const S: (isize, isize) = (1, 0);
+const SW: (isize, isize) = (1, -1);
+const W: (isize, isize) = (0, -1);
+const NW: (isize, isize) = (-1, -1);
+const DIRECTIONS4: [(isize, isize); 4] = [N, E, S, W];
+const DIRECTIONS8: [(isize, isize); 8] = [N, NE, E, SE, S, SW, W, NW];
 
 fn main() -> io::Result<()> {
     let map = read_array_from_string(read_from_args()?);
@@ -44,9 +58,10 @@ fn main() -> io::Result<()> {
     let clusters = find_all_clusters(&map);
     // dbg!(&clusters);
 
-    let price = clusters.iter().fold(0, |acc, cluster| 
-        acc + cluster.plots.len() * cluster.perimeter
-    );
+    let price = clusters.iter().fold((0, 0), |acc, cluster| {
+        let area = cluster.plots.len();
+        (acc.0 + area * cluster.perimeter, acc.1 + area * cluster.corners)
+    });
     dbg!(price);
     Ok(())
 }
@@ -60,12 +75,16 @@ fn find_all_clusters(
     let mut clusters: Vec<Cluster> = Vec::new();
     for i in 0..height {
         for j in 0..width {
+            // if plot already in one of the clusters, ignore
             if clusters.iter().any(|cluster| cluster.plots.contains(&(i,j))) {
                 continue;
             }
+
+            // create new cluster
             let mut new_cluster = Cluster {
                 cluster_type: map[i][j],
                 perimeter: 0,
+                corners: 0,
                 plots: Vec::new()
             };
             find_cluster(&map, height, width, &mut new_cluster, (i, j));
@@ -82,36 +101,53 @@ fn find_cluster(
     cluster: &mut Cluster,
     plot: (usize, usize)
 ) {
+    // depth-first search
+    process_plot(map, height, width, cluster, plot);
     cluster.plots.push(plot);
 
-    for &neighbor in get_neighbors(plot, map).iter() {
-        match neighbor {
-            None => {
-                cluster.perimeter += 1;
-            },
-            Some(n) => {
-                if cluster.cluster_type != map[n.0][n.1] {
-                    cluster.perimeter += 1;
-                } else if !cluster.plots.contains(&n) {
-                    find_cluster(map, height, width, cluster, n);
-                }
-            }
-        }        
+    for direction in DIRECTIONS4 {
+        let Some(neighbor) = map_add(plot, direction, height, width) else {
+            continue;
+        };
+
+        if map[plot.0][plot.1] == map[neighbor.0][neighbor.1]
+        && !cluster.plots.contains(&neighbor) {
+            find_cluster(map, height, width, cluster, neighbor);
+        }
     }
 }
 
-fn get_neighbors(plot: (usize, usize), map: &Vec<Vec<char>>) -> Vec<Option<(usize, usize)>> {
-    let height = map.len();
-    let width = map[0].len();
+fn process_plot(
+    map: &Vec<Vec<char>>,
+    height: usize, 
+    width: usize, 
+    cluster: &mut Cluster, 
+    plot: (usize, usize)
+){
+    for i in (0..DIRECTIONS8.len()).step_by(2) {
+        let directions: Vec<&(isize, isize)> = DIRECTIONS8.iter().cycle().skip(i).take(3).collect();
 
-    [
-        (-1, 0), // up
-        (0, 1), // right
-        (1, 0), // down
-        (0, -1) // left
-    ].iter().map(|&(di, dj)| {
-        map_add(plot, (di, dj), height, width)
-    }).collect()
+        // if up/right/down/left is blocked, add 1 to perimeter
+        let blocked = map_add(plot, *directions[0], height, width)
+            .map_or(true, |(x, y)| map[x][y] != cluster.cluster_type);
+        cluster.perimeter += blocked as usize;
+
+        // clunky corner detection
+        let corner_state: Vec<bool> = directions.iter().map(|&dir|
+            map_add(plot, *dir, height, width)
+                .map_or(true, |(x, y)| map[x][y] != cluster.cluster_type)
+        ).take(3).collect();
+
+        if matches!(
+            [corner_state[0], corner_state[1], corner_state[2]], 
+            [true, true, true] // outer corner
+            | [false, true, false] // inner corner
+            | [true, false, true] // special case inner corner
+        ) {
+            
+            cluster.corners += 1;
+        }
+    }
 }
 
 fn map_add(
