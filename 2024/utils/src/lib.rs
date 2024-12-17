@@ -1,6 +1,37 @@
 use std::env;
 use std::fs;
 use std::io;
+use std::io::Read;
+use std::io::Write;
+use std::ops::Neg;
+
+#[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
+pub struct Direction {
+    pub x: isize,
+    pub y: isize
+}
+
+impl Neg for Direction {
+    type Output = Self;
+
+    fn neg(self) -> Self::Output {
+        Direction {
+            x: -self.x,
+            y: -self.y
+        }
+    }
+}
+
+pub const N: Direction  = Direction { x: -1, y: 0 };
+pub const NE: Direction = Direction { x: -1, y: 1 };
+pub const E: Direction = Direction { x: 0, y: 1 };
+pub const SE: Direction = Direction { x: 1, y: 1 };
+pub const S: Direction = Direction { x: 1, y: 0 };
+pub const SW: Direction = Direction { x: 1, y: -1 };
+pub const W: Direction = Direction { x: 0, y: -1 };
+pub const NW: Direction = Direction { x: -1, y: -1 };
+pub const DIRECTIONS4: [Direction; 4] = [N, E, S, W];
+pub const DIRECTIONS8: [Direction; 8] = [N, NE, E, SE, S, SW, W, NW];
 
 pub fn read_from_args() -> io::Result<String> {
     let args: Vec<String> = env::args().collect();
@@ -22,4 +53,17 @@ pub fn read_array_of_numbers_from_string(text: String) -> Vec<Vec<u32>> {
         )
         .collect::<Vec<u32>>()
     ).collect()
+}
+
+pub fn add_direction(position: (usize, usize), direction: Direction) -> (usize, usize) {
+    (
+        position.0.saturating_add_signed(direction.x),
+        position.1.saturating_add_signed(direction.y)
+    )
+}
+
+pub fn pause() {
+    let mut stdout = io::stdout();
+    stdout.flush().unwrap();
+    io::stdin().read(&mut [0]).unwrap();
 }
