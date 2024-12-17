@@ -70,12 +70,7 @@ fn move_robot(position, direction, boxes_to_move) {
 use std::{collections::HashSet, io};
 use std::io::{stdin, stdout, Read, Write};
 
-use utils::{read_array_from_string, read_from_args};
-
-const UP: (isize, isize) = (-1, 0);
-const DOWN: (isize, isize) = (1, 0);
-const LEFT: (isize, isize) = (0, -1);
-const RIGHT: (isize, isize) = (0, 1);
+use utils::{add_direction, read_array_from_string, read_from_args, Direction, E, N, S, W};
 
 const BOX_WIDTH: usize = 2;
 
@@ -91,11 +86,11 @@ fn main() -> io::Result<()> {
     let (mut robot, mut boxes, walls) = parse_map(&map);
 
     input_directions.chars().for_each(|direction_symbol| {
-        let direction: (isize, isize) = match direction_symbol {
-            '^' => UP,
-            'v' => DOWN,
-            '<' => LEFT, 
-            '>' => RIGHT,
+        let direction: Direction = match direction_symbol {
+            '^' => N,
+            'v' => S,
+            '<' => W, 
+            '>' => E,
             '\n' => return,
             _ => panic!("Unexpected direction.")
         };
@@ -126,14 +121,7 @@ fn main() -> io::Result<()> {
     Ok(())
 }
 
-fn add_direction(position: (usize, usize), direction: (isize, isize)) -> (usize, usize) {
-    (
-        position.0.saturating_add_signed(direction.0),
-        position.1.saturating_add_signed(direction.1)
-    )
-}
-
-fn search_boxes(position: (usize, usize), direction: (isize, isize), boxes_to_move: &mut Vec<usize>, boxes: &Vec<(usize, usize)>, map: &Vec<Vec<char>>, ) -> bool {    
+fn search_boxes(position: (usize, usize), direction: Direction, boxes_to_move: &mut Vec<usize>, boxes: &Vec<(usize, usize)>, map: &Vec<Vec<char>>, ) -> bool {    
     let object = map[position.0][position.1];
     match (direction, object) {
         (_, '#') => {
@@ -149,12 +137,12 @@ fn search_boxes(position: (usize, usize), direction: (isize, isize), boxes_to_mo
             let neighbor = add_direction(position, direction);
             search_boxes(neighbor, direction, boxes_to_move, boxes, map)
         },
-        (LEFT | RIGHT, ']') => {
+        (E | W, ']') => {
             let neighbor = add_direction(position, direction);
             search_boxes(neighbor, direction, boxes_to_move, boxes, map)
         },
-        (UP|DOWN, ']') => {
-            let left_edge = add_direction(position, LEFT);
+        (N|S, ']') => {
+            let left_edge = add_direction(position, W);
             search_boxes(left_edge, direction, boxes_to_move, boxes, map)
         }
         (_, '[') => {
@@ -163,12 +151,12 @@ fn search_boxes(position: (usize, usize), direction: (isize, isize), boxes_to_mo
                 (*boxes_to_move).push(box_index);
             }
 
-            if direction == RIGHT || direction == LEFT { // horizontal
+            if direction == E || direction == W { // horizontal
                 let neighbor = add_direction(position, direction);
                 search_boxes(neighbor, direction, boxes_to_move, boxes, map)
             } else {
                 let neighbor_left = add_direction(position, direction);
-                let right_edge = add_direction(position, RIGHT);
+                let right_edge = add_direction(position, E);
                 let neighbor_right = add_direction(right_edge, direction);
                 search_boxes(neighbor_left, direction, boxes_to_move, boxes, map)
                 && search_boxes(neighbor_right, direction, boxes_to_move, boxes, map)
@@ -258,11 +246,4 @@ fn print_map(map: &Vec<Vec<char>>) {
         }
         println!();
     }
-}
-
-#[allow(dead_code)]
-fn pause() {
-    let mut stdout = stdout();
-    stdout.flush().unwrap();
-    stdin().read(&mut [0]).unwrap();
 }

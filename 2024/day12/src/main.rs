@@ -30,7 +30,11 @@ Part 2: price is given by the product of a region's area and it's number of side
 */
 use std::io;
 
-use utils::{read_from_args, read_array_from_string};
+use utils::{
+    Direction,
+    DIRECTIONS4, DIRECTIONS8,
+    read_from_args, read_array_from_string
+};
 
 #[derive(Debug)]
 struct Cluster {
@@ -39,17 +43,6 @@ struct Cluster {
     corners: usize,
     plots: Vec<(usize, usize)>
 }
-
-const N: (isize, isize)  = (-1, 0);
-const NE: (isize, isize) = (-1, 1);
-const E: (isize, isize) = (0, 1);
-const SE: (isize, isize) = (1, 1);
-const S: (isize, isize) = (1, 0);
-const SW: (isize, isize) = (1, -1);
-const W: (isize, isize) = (0, -1);
-const NW: (isize, isize) = (-1, -1);
-const DIRECTIONS4: [(isize, isize); 4] = [N, E, S, W];
-const DIRECTIONS8: [(isize, isize); 8] = [N, NE, E, SE, S, SW, W, NW];
 
 fn main() -> io::Result<()> {
     let map = read_array_from_string(read_from_args()?);
@@ -125,7 +118,7 @@ fn process_plot(
     plot: (usize, usize)
 ){
     for i in (0..DIRECTIONS8.len()).step_by(2) {
-        let directions: Vec<&(isize, isize)> = DIRECTIONS8.iter().cycle().skip(i).take(3).collect();
+        let directions: Vec<&Direction> = DIRECTIONS8.iter().cycle().skip(i).take(3).collect();
 
         // if up/right/down/left is blocked, add 1 to perimeter
         let blocked = map_add(plot, *directions[0], height, width)
@@ -152,11 +145,11 @@ fn process_plot(
 
 fn map_add(
     (i, j): (usize, usize),
-    (di, dj): (isize, isize), 
+    direction: Direction,
     height: usize, 
     width: usize
 ) -> Option<(usize, usize)> {
-    let (ni, nj) = (i as isize + di, j as isize + dj);
+    let (ni, nj) = (i as isize + direction.x, j as isize + direction.y);
     if ni >= 0 && nj >= 0 && ni < height as isize && nj < width as isize {
         return Some((ni as usize, nj as usize));
     };
