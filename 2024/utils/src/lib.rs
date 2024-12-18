@@ -62,6 +62,16 @@ pub fn add_direction(position: (usize, usize), direction: Direction) -> (usize, 
     )
 }
 
+pub fn add_checked_direction(position: (usize, usize), direction: Direction) -> Option<(usize, usize)> {
+    let opt_x = position.0.checked_add_signed(direction.x);
+    let opt_y = position.1.checked_add_signed(direction.y);
+
+    match (opt_x, opt_y) {
+        (Some(x), Some(y)) => Some((x, y)),
+        _ => None
+    }
+}
+
 pub fn pause() {
     let mut stdout = io::stdout();
     stdout.flush().unwrap();
