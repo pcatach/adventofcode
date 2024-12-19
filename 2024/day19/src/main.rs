@@ -35,7 +35,11 @@ that have the same colors as the design.
 Another thing I can do is checking that the design length is divisible by the GCD of the pattern lengths.
 Update: that doesn't work because the GCD of the pattern lengths is 1 :(
 
+Running time: 15.8ms
+
 Part 2: for each design, compute the number of different possible pattern combinations
+
+Running time: 65.3ms
 */
 
 use std::collections::HashSet;
@@ -55,21 +59,13 @@ fn main() -> io::Result<()> {
     let patterns: HashSet<&str> = lines.0.split(", ").collect();
     let designs: Vec<&str> = lines.1.lines().collect();
 
-    let mut cache: HashMap<String, bool> = HashMap::new();
+    let mut cache: HashMap<String, usize> = HashMap::new();
 
-    let mut num_possible = 0;
-    let mut total_count = 0;
+    let mut num_possibilities = 0;
     for design in designs {
-        total_count += 1;
-        let is_possible = is_possible(design, &patterns, &mut cache);
-        // dbg!(design, is_possible);
-        if !is_possible {
-            continue;
-        }
-        num_possible += 1;
+        num_possibilities += compute_possibilities(design, &patterns, &mut cache);
     }
-    dbg!(total_count);
-    dbg!(num_possible);    
+    dbg!(num_possibilities);    
 
     let elapsed = now.elapsed();
     println!("Elapsed: {:.2?}", elapsed);
@@ -77,35 +73,30 @@ fn main() -> io::Result<()> {
     Ok(())
 }
 
-fn is_possible(design: &str, patterns: &HashSet<&str>, cache: &mut HashMap<String, bool>) -> bool {
-    let cached = cache.get(design);
-    match cached {
-        Some(&value) => {
-            return value
-        },
-        None => {}
+fn compute_possibilities(design: &str, patterns: &HashSet<&str>, cache: &mut HashMap<String, usize>) -> usize {
+    if design.is_empty() {
+        return 1;
     }
 
-    if design.len() == 0 {
-        return true;
+    if let Some(&value) = cache.get(design) {
+        return value
     }
 
     // dbg!(&design);
     // let mut new_patterns = patterns.clone();
+    let mut num_possibilities = 0;
     for &pattern in patterns {
         if pattern.len() > design.len() {
             // new_patterns.remove(pattern);
             continue;
         }
 
-        if &design[..pattern.len()] == pattern 
-        && is_possible(&design[pattern.len()..], &patterns, cache) {
-            cache.insert(design.to_string(), true);
-            return true;
+        if design.starts_with(pattern) {
+            num_possibilities += compute_possibilities(&design[pattern.len()..], &patterns, cache);
         }
     }
-    cache.insert(design.to_string(), false);
-    false
+    cache.insert(design.to_string(), num_possibilities);
+    return num_possibilities
 }
 
 
