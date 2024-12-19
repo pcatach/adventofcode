@@ -16,25 +16,16 @@ Then, for each of the available directions, push new path to the queue.
 Part 2: from the list of coordinates, which is the first one that would
 prevent the exit being reachable?
 
-Approach: collect every possible path between start and end (so do the same BFS
-but don't terminate unless position is a wall/out of map) - add a condition to terminate
-if the path is a loop.
-
-Find the first coordinate that blocks a bottleneck: a position in the intersection of all paths.
-
-This is too slow... is there a way to collect the bottlenecks without having to generate every possible path?
-You can take the shortest path and look for bottlenecks by checking positions where there's a wall (or out of map)
-in two distinct directions.
-
+Approach: binary search
 */
 use std::{collections::{HashSet, VecDeque}, io, usize};
 
 use utils::{add_checked_direction, pause, read_from_args, DIRECTIONS4};
 
-const T: usize = 12;
-// const T: usize = 1024;
-const SIZE: usize = 6+1;
-// const SIZE: usize = 70+1;
+// const T: usize = 12;
+const T: usize = 1024;
+// const SIZE: usize = 6+1;
+const SIZE: usize = 70+1;
 
 fn main() -> io::Result<()> {
     let input = read_from_args()?;
@@ -49,16 +40,23 @@ fn main() -> io::Result<()> {
     let end = (SIZE-1, SIZE-1);
 
     let shortest_path = find_shortest_path(&coordinates, start, end);
-    dbg!(shortest_path.len() - 1);
+    dbg!(&shortest_path.len() - 1);
 
-    let bottlenecks = find_bottlenecks(&coordinates, start, end);
-    // dbg!(bottlenecks);
-    // print_path(&coordinates, &Vec::from_iter(bottlenecks.iter().cloned()));
-    for &coord in all_coordinates.iter().skip(T) {
-        if bottlenecks.contains(&coord) {
-            dbg!(coord);
+    // binary search
+    let mut min_i = T;
+    let mut max_i = all_coordinates.len();
+    while min_i < max_i {
+        let i = (max_i + min_i) / 2;
+        let coordinates: Vec<(usize, usize)> = all_coordinates.iter().take(i+1).cloned().collect();
+        let shortest_path = find_shortest_path(&coordinates, start, end);
+        // dbg!(min_i, max_i, i, shortest_path.len());
+        if shortest_path.len() == 0 {
+            max_i = i;
+        } else {
+            min_i = i + 1;
         }
     }
+    dbg!(all_coordinates[min_i]);
     Ok(())
 }
 
@@ -106,49 +104,6 @@ fn find_shortest_path(coordinates: &Vec<(usize, usize)>, start: (usize, usize), 
         // dbg!(&queue);
     }
     shortest_path
-}
-
-fn find_bottlenecks(coordinates: &Vec<(usize, usize)>, start: (usize, usize), end: (usize, usize)) -> HashSet<(usize, usize)> {
-    let mut all_paths: Vec<HashSet<(usize, usize)>> = Vec::new();
-
-    let mut queue: VecDeque<((usize, usize), Vec<(usize, usize)>)> = VecDeque::new(); // (position, path)
-    queue.push_back((start, vec![start]));
-
-    while !queue.is_empty() {
-        let (position, path) = queue.pop_front().unwrap();
-       
-        if coordinates.contains(&position)
-          || position.0 >= SIZE
-          || position.1 >= SIZE {
-            continue;
-        }
-        
-        // print_path(&coordinates, &path);
-
-        if position == end {
-            all_paths.push(HashSet::from_iter(path.iter().cloned()));
-            continue;
-        }
-
-        for direction in DIRECTIONS4 {
-            let Some(new_position) = add_checked_direction(position, direction) else {
-                continue;
-            };
-            if path.contains(&new_position) {
-                continue;
-            }
-
-            let mut new_path = path.clone();
-            new_path.push(new_position);
-            queue.push_back((new_position, new_path));
-        }
-        // dbg!(&queue);
-    }
-    // dbg!(&all_paths);
-    all_paths.iter()
-        .fold( all_paths[0].clone(), |acc, path| 
-            acc.intersection(path).cloned().collect::<HashSet<(usize, usize)>>()
-        )
 }
 
 #[allow(dead_code)]
