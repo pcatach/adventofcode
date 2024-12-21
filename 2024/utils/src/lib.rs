@@ -72,6 +72,10 @@ pub fn add_checked_direction(position: (usize, usize), direction: Direction) -> 
     }
 }
 
+pub fn dot_product(a: &Direction, b: &Direction) -> isize {
+    a.x * b.x + a.y * b.y
+}
+
 pub fn pause() {
     let mut stdout = io::stdout();
     stdout.flush().unwrap();
