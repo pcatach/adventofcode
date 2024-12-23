@@ -1,20 +1,22 @@
 /*
 Part 1: you are given a door code that must be typed into a numeric keypad arranged like
 ```
-7 8 9
-4 5 6
-1 2 3
-  0 A
+789
+456
+123
+ 0A
 ```
 and a keypad like 
 ```
-  ^ A
-< v >
+ ^A
+<v>
 ```
 the keypad controls a robot arm (robot A) that types into another keypad
 that contorls another robot arm (robot B) that types into another keypad
 that controls another robot arm (robot C) that types into the numeric keypad.
 Robots A, B, and C start pointing at "A" on their respective keypads.
+
+Robot is never allowed to pass through empty " " positions.
 
 What's the shortest possible sequence of buttons you could press to cause robot
 A to type a code on the numeric keypad?
@@ -35,105 +37,137 @@ Another issue is that e.g. <^A vs ^<A should be weighted differently because < i
 the priority is N, E, D, W.
 
 This approach doesn't work. I need instead to take all the robots into account at once when doing my path search.
+So before saying that a path in the numeric keypad is the shortest, I must do a BFS on the directions keypad,
+and recurse until I get to robot C
 */
 
-use std::{collections::{HashSet, VecDeque}, io};
+use std::{collections::{HashMap, VecDeque}, io, usize};
 
-use utils::{add_checked_direction, read_from_args, Direction, DIRECTIONS4, E, N, S, W};
+use utils::{add_checked_direction, pause, read_from_args, Direction, DIRECTIONS4, E, N, S, W};
 
-const NUMERIC_KEYPAD: [[char; 3]; 4] = [
-    ['7', '8', '9'],
-    ['4', '5', '6'],
-    ['1', '2', '3'],
-    [' ', '0', 'A']
+const NUMERIC_KEYPAD: &[&[char]] = &[
+    &['7', '8', '9'],
+    &['4', '5', '6'],
+    &['1', '2', '3'],
+    &[' ', '0', 'A']
 ];
 
-const DIRECTIONS_KEYPAD: [[char; 3]; 2] = [
-    [' ', '^', 'A'],
-    ['<', 'v', '>']
+const DIRECTIONS_KEYPAD: &[&[char]] = &[
+    &[' ', '^', 'A'],
+    &['<', 'v', '>']
 ];
+
+const MAX_DEPTH: usize = 25;
 
 fn main() -> io::Result<()> {
     let codes: Vec<Vec<char>> = read_from_args()?.lines().map(|l| l.chars().collect()).collect();
-    
-    let numeric_keypad: Vec<Vec<char>> = NUMERIC_KEYPAD.to_vec().iter().map(|l| l.to_vec()).collect();
-    let directions_keypad: Vec<Vec<char>> = DIRECTIONS_KEYPAD.to_vec().iter().map(|l| l.to_vec()).collect();
+    let mut cache: HashMap<(usize, char, char), usize> = HashMap::new(); // depth, from, to => length
 
     let mut sum_complexities = 0;
     for code in codes {
-        let mut path = bfs(&numeric_keypad, (3, 2), &code);
-        println!("{}: {} ({})", code.iter().collect::<String>(), path.iter().collect::<String>(), path.len());
-        path = bfs(&directions_keypad, (0, 2),  &path);
-        println!("{}: {} ({})", code.iter().collect::<String>(), path.iter().collect::<String>(), path.len());
-        path = bfs(&directions_keypad, (0, 2),  &path);
-        println!("{}: {} ({})", code.iter().collect::<String>(), path.iter().collect::<String>(), path.len());
-
-        sum_complexities += code[..code.len()-1].iter().collect::<String>().parse::<usize>().unwrap() * path.len();
+        let mut length = 0;
+        for i in 0..code.len() {
+            let start = if i == 0 {'A'} else {code[i-1]};
+            let end = code[i];
+            length += solution(&mut cache, start, end, MAX_DEPTH);
+        }
+        println!("{}: {}", code.iter().collect::<String>(), length);
+        sum_complexities += code[..code.len()-1].iter().collect::<String>().parse::<usize>().unwrap() * length;
     }
     dbg!(sum_complexities);
     Ok(())
 }
 
-fn bfs(keypad: &Vec<Vec<char>>, start: (usize, usize), code: &Vec<char>) -> Vec<char> {
-    let mut keys = code.iter();
+fn solution(cache: &mut HashMap<(usize, char, char), usize>, from: char, to: char, depth: usize) -> usize {
+    if let Some(&length) = cache.get(&(depth, from, to)) {
+        return length;
+    }
 
-    // a sequence of BFS for finding each of the keys (emptying the queue in turns)
-    let mut shortest_path: Vec<char> = Vec::new();
-    let mut visited: HashSet<(usize, usize)> = HashSet::new();
-    let mut queue: VecDeque<((usize, usize), Vec<Direction>)> = VecDeque::new();
-    queue.push_back((start, Vec::new()));
-    
-    let mut key = keys.next().unwrap();
+    let shortest_paths = bfs(from, to, if depth==MAX_DEPTH {NUMERIC_KEYPAD} else {DIRECTIONS_KEYPAD});
+    if depth == 0 {
+        return shortest_paths[0].len();
+    }
 
-    while !queue.is_empty() {
-        let (position, path) = queue.pop_front().unwrap();
-        // println!("{}, {}, path={}", position.0, position.1, path.iter().collect::<String>());
-
-        // avoid visited nodes
-        if visited.contains(&position) {
-            continue;
+    let mut min_length = usize::MAX;
+    for path in shortest_paths {
+        let mut length = 0;
+        for i in 0..path.len() {
+            let start = if i == 0 {'A'} else {path[i-1]};
+            let end = path[i];
+            length += solution(cache, start, end, depth-1);
         }
-        visited.insert(position);
 
-        if keypad[position.0][position.1] == *key {
-            // found key
-            shortest_path.extend(
-                &path.iter().map(|d| map_to_char(d)).collect::<Vec<char>>()
-            );
-            shortest_path.push('A');
+        if length < min_length {
+            min_length = length;
+        }
+    }
+    cache.insert((depth, from, to), min_length);
+    min_length
+}
 
-            // reset BFS
-            visited = HashSet::new();
-            queue = VecDeque::new();
-            queue.push_back((position, Vec::new()));
+fn bfs(
+    from: char,
+    to: char,
+    keypad: &[&[char]]
+) -> Vec<Vec<char>> {
+    let mut shortest_paths: Vec<Vec<char>> = Vec::new();
+    let mut shortest_path_len= usize::MAX;
 
-            // start looking for next key
-            match keys.next() {
-                Some(k) => {key = k},
-                None => break
+    let mut queue: VecDeque<(char, Vec<char>)> = VecDeque::new();
+    queue.push_back((from, Vec::new()));
+
+    while let Some((key, mut path)) = queue.pop_front() {
+        // longer than current shortest is forbidden
+        if path.len() > shortest_path_len {
+            // because it's a BFS, any remaining paths in the queue will be longer
+            break;
+        }
+            
+        if key == to {
+            if path.len() <= shortest_path_len {
+                path.push('A');
+                shortest_path_len = path.len();
+                shortest_paths.push(path);
             }
             continue;
         }
 
         for direction in DIRECTIONS4 {
-            let Some(new_position) = add_checked_direction(position, direction) else {
+            let Some(new_key) = get_new_key(key, &keypad, &direction) else {
                 continue;
             };
-            if new_position.0 >= keypad.len() || new_position.1 >= keypad[0].len() {
-                continue;
-            }
+
             // gap is forbidden
-            if keypad[new_position.0][new_position.1] == ' ' {
+            if new_key == ' ' {
                 continue;
             }
 
-
-            let mut new_path = path.clone();
-            new_path.push(direction);
-            queue.push_back((new_position, new_path));
+            let mut new_path: Vec<char> = path.clone();
+            new_path.push(map_to_char(&direction));
+            queue.push_back((new_key, new_path));    
         }
     }
-    shortest_path
+    shortest_paths
+}
+
+fn get_new_key(key: char, keypad: &[&[char]], direction: &Direction) -> Option<char> {
+    let mut position = (0, 0);
+    'outer: for i in 0..keypad.len() {
+        for j in 0..keypad[0].len() {
+            if keypad[i][j] == key {
+                position = (i, j);
+                break 'outer;
+            }
+        }
+    }
+
+    let Some(new_position) = add_checked_direction(position, *direction) else {
+        return None;
+    };
+    if new_position.0 >= keypad.len() || new_position.1 >= keypad[0].len() {
+        return None;
+    }
+    Some(keypad[new_position.0][new_position.1])
 }
 
 fn map_to_char(d: &Direction) -> char {
