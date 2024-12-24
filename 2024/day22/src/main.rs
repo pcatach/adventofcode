@@ -21,52 +21,48 @@ If it doesn'n see that sequence for a given banana seller, it will jump to the n
 
 What sequence must the monkey look for in order to maximise the number of bananas purchased?
 */
-use std::{collections::{HashMap, HashSet}, io};
+use std::{collections::{HashMap, HashSet}, io, time::Instant};
 
 use utils::read_from_args;
 
 const MAX_NUMBERS: usize = 2000;
 
 fn main() -> io::Result<()> {
+    let time = Instant::now();
     let input = read_from_args()?;
 
-    let mut sum: u64 = 0;
-    let mut patterns_cache: HashMap<[isize; 4], u64> = HashMap::new(); // pattern of 4 diffs => total number of bananas
-    let mut seen: HashSet<[isize; 4]> = HashSet::new();
+    let mut sum: i64 = 0;
+    let mut patterns_cache: HashMap<(i64, i64, i64, i64), i64> = HashMap::new(); // pattern of 4 diffs => total number of bananas
+    let mut seen: HashSet<(i64, i64, i64, i64)> = HashSet::new();
 
     for line in input.lines() {
-        let mut secret = line.parse::<u64>().unwrap();
-        let mut previous_price = secret % 10;
+        let mut secret = line.parse::<i64>().unwrap();
+        let mut prices = [0; MAX_NUMBERS];
 
-        let mut price_diffs = [0; 4];
-
-        for i in 0..MAX_NUMBERS {
+        for price in prices.iter_mut() {
             secret = rng(secret);
-            let price = secret % 10;
-            let price_diff = price as isize - previous_price as isize;
-            
-            price_diffs = [price_diffs[1], price_diffs[2], price_diffs[3], price_diff];
-            if i <= 3 {
-                continue;
-            }
-            
-            if !seen.contains(&price_diffs) {
-                seen.insert(price_diffs);
-                *patterns_cache.entry(price_diffs).or_insert(0) += price;
-            }
+            *price = secret % 10;
+        }
 
-            previous_price = price;
+        for i in 4..MAX_NUMBERS {
+            let diffs = 
+                (prices[i-3] - prices[i-4], prices[i-2] - prices[i-3], prices[i-1] - prices[i-2], prices[i] - prices[i-1]);
+            if seen.insert(diffs) {
+                *patterns_cache.entry(diffs).or_default() += prices[i];
+            }
         }
         seen.clear();
         sum += secret;
     }
-    let max_pattern = &patterns_cache.iter().max_by_key(|x| *x.1).unwrap();
-    dbg!(max_pattern);
+    dbg!(&patterns_cache.into_values().max());
+    // let max_pattern = &patterns_cache.iter().max_by_key(|x| *x.1).unwrap();
+    // dbg!(max_pattern);
     dbg!(sum);
+    dbg!(time.elapsed());
     Ok(())
 }
 
-fn rng(s: u64) -> u64 {
+fn rng(s: i64) -> i64 {
     let mut n = ( (s << 6) ^ s) & 0xFFFFFF;
     n = (n >> 5) ^ n; // pruning not needed
     ((n << 11) ^ n) & 0xFFFFFF
